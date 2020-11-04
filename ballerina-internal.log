@@ -32,3 +32,10 @@ java.lang.IllegalArgumentException: TrustStore File /bre/security/ballerinaTrust
 	at org.ballerinalang.jvm.scheduling.Scheduler.runSafely(Scheduler.java:231)
 	at java.lang.Thread.run(Thread.java:748)
  
+[2020-11-04 11:37:24,647] SEVERE {b7a.log.crash} - java.lang.IllegalStateException 
+error: java.lang.IllegalStateException message=illegal function invocation
+	at ballerina.http:nativeRespond(http_connection.bal:247)
+	   ballerina.http.Caller:respond(http_connection.bal:56)
+	   crud:$lambda$0(crud.bal:38)
+	   ballerina.lang_stream:forEach(stream.bal:170)
+	   $value$customer__service_0:getCustomers(crud.bal:35) 
