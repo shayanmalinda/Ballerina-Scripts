@@ -15,6 +15,23 @@ type Customer record {|
     string lastname;
     string email;
 |};
+
+function initializeDatabase() returns sql:Error? {
+    mysql:Client mysqlClient = check new (user = dbUser, password = dbPassword);
+
+    sql:ExecuteResult? result = check mysqlClient->execute("CREATE DATABASE IF NOT EXISTS " + dbName);
+    io:println("Database created. ");
+
+    check mysqlClient.close();
+}
+
+function initializeTable(mysql:Client mysqlClient) returns sql:Error? {
+    
+    sql:ExecuteResult? result = check mysqlClient->execute("CREATE TABLE IF NOT EXISTS customers" +
+        "(id INTEGER NOT NULL AUTO_INCREMENT, firstname  VARCHAR(300)" +
+        ",lastname  VARCHAR(300), email VARCHAR(300), PRIMARY KEY (id))");
+
+}
         
 
 @http:ServiceConfig {
@@ -53,6 +70,7 @@ service customer on new http:Listener(serverPort) {
             sql:Error? err = mysqlClient.close();
         } else {
             io:println("MySQL Client initialization for querying data failed!", mysqlClient);
+            var result = caller->respond(mysqlClient.toString());
         }
 
     }
@@ -63,11 +81,12 @@ service customer on new http:Listener(serverPort) {
     }
     resource function addCustomers(http:Caller caller, http:Request req) {
 
-
+        error? initializeDatabaseResult = initializeDatabase();
         mysql:Client|sql:Error mysqlClient = new (user = dbUser, password = dbPassword, database = dbName);
 
         if (mysqlClient is mysql:Client) {
 
+            error? initializeTableResult = initializeTable(mysqlClient);
             var customer = req.getJsonPayload();
             if(customer is json){
                 json|error firstName = customer.firstname;
@@ -84,6 +103,7 @@ service customer on new http:Listener(serverPort) {
             sql:Error? err = mysqlClient.close();
         } else {
             io:println("MySQL Client initialization for querying data failed!", mysqlClient);
+            var result = caller->respond(mysqlClient.toString());
         }
 
     }
@@ -119,6 +139,7 @@ service customer on new http:Listener(serverPort) {
             sql:Error? err = mysqlClient.close();
         } else {
             io:println("MySQL Client initialization for querying data failed!", mysqlClient);
+            var result = caller->respond(mysqlClient.toString());
         }
 
     }
@@ -153,6 +174,7 @@ service customer on new http:Listener(serverPort) {
             sql:Error? err = mysqlClient.close();
         } else {
             io:println("MySQL Client initialization for querying data failed!", mysqlClient);
+            var result = caller->respond(mysqlClient.toString());
         }
 
     }
