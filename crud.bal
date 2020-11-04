@@ -6,6 +6,8 @@ import ballerina/io;
 
 string dbUser = "root";
 string dbPassword = "";
+string dbName = "crud";
+int serverPort = 9092;
 
 type Customer record {|
     int id;
@@ -13,11 +15,12 @@ type Customer record {|
     string lastname;
     string email;
 |};
+        
 
 @http:ServiceConfig {
     basePath: "/customers"
 }
-service customer on new http:Listener(9092) {
+service customer on new http:Listener(serverPort) {
 
     @http:ResourceConfig {
         methods: ["GET"],
@@ -25,8 +28,7 @@ service customer on new http:Listener(9092) {
     }
     resource function getCustomers(http:Caller caller, http:Request req) {
 
-
-        mysql:Client|sql:Error mysqlClient = new (user = dbUser, password = dbPassword, database = "crud");
+        mysql:Client|sql:Error mysqlClient = new (user = dbUser, password = dbPassword, database = dbName);
 
         if (mysqlClient is mysql:Client) {
 
@@ -62,26 +64,56 @@ service customer on new http:Listener(9092) {
     resource function addCustomers(http:Caller caller, http:Request req) {
 
 
-        mysql:Client|sql:Error mysqlClient = new (user = dbUser, password = dbPassword, database = "crud");
+        mysql:Client|sql:Error mysqlClient = new (user = dbUser, password = dbPassword, database = dbName);
 
         if (mysqlClient is mysql:Client) {
 
-            stream<record{}, error> resultStream = mysqlClient->query("Select * from customers", Customer);
+            var customer = req.getJsonPayload();
+            if(customer is json){
+                json|error firstName = customer.firstname;
+                json|error lastName = customer.lastname;
+                json|error email = customer.email;
+                string sqlString = "('"+firstName.toString() + "','"+lastName.toString()+"','"+email.toString()+"');";
+                sql:ExecuteResult|()|error execute = mysqlClient->execute(<@untained> ("INSERT INTO customers (firstname,lastname,email) VALUES "+ sqlString)); 
+                var result = caller->respond("success");
+                if (result is error) {
+                    log:printError("Error sending response", result);
+                }  
+            }
 
-            stream<Customer, sql:Error> customerStream = <stream<Customer, sql:Error>>resultStream;
+            sql:Error? err = mysqlClient.close();
+        } else {
+            io:println("MySQL Client initialization for querying data failed!", mysqlClient);
+        }
 
-            json[] array=[];
+    }
 
-            error? e = customerStream.forEach(function(Customer customer) {
-                json|error j = json.constructFrom(customer);
-                if (j is json) {
-                    array.push(j);
+    @http:ResourceConfig {
+        methods: ["PUT"],
+        path: "/"
+    }
+    resource function editCustomers(http:Caller caller, http:Request req) {
+
+
+        mysql:Client|sql:Error mysqlClient = new (user = dbUser, password = dbPassword, database = dbName);
+
+        if (mysqlClient is mysql:Client) {
+
+            var customer = req.getJsonPayload();
+            if(customer is json){
+                json|error id = customer.id;
+                json|error firstName = customer.firstname;
+                json|error lastName = customer.lastname;
+                json|error email = customer.email;
+                string sqlString = "UPDATE customers SET firstname='"+firstName.toString()+"',lastname='"+lastName.toString()+"',email='"+email.toString()+"' WHERE id="+id.toString();
+                sql:ExecuteResult|()|error execute = mysqlClient->execute(<@untained> (sqlString));
+                if (execute is error) {
+                    io: println(execute.toString());
+                    var respond = caller->respond("failed");
+                }  
+                else{
+                    var respond = caller->respond("success");
                 }
-            });
-
-            var result = caller->respond(array);
-            if (result is error) {
-                log:printError("Error sending response", result);
             }
 
             sql:Error? err = mysqlClient.close();
