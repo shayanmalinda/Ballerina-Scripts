@@ -122,4 +122,38 @@ service customer on new http:Listener(serverPort) {
         }
 
     }
+
+
+
+    @http:ResourceConfig {
+        methods: ["DELETE"],
+        path: "/"
+    }
+    resource function deleteCustomer(http:Caller caller, http:Request req) {
+
+
+        mysql:Client|sql:Error mysqlClient = new (user = dbUser, password = dbPassword, database = dbName);
+
+        if (mysqlClient is mysql:Client) {
+
+            var customer = req.getJsonPayload();
+            if(customer is json){
+                json|error id = customer.id;
+                string sqlString = "DELETE FROM customers WHERE id="+id.toString();
+                sql:ExecuteResult|()|error execute = mysqlClient->execute(<@untained> (sqlString));
+                if (execute is error) {
+                    io: println(execute.toString());
+                    var respond = caller->respond("failed");
+                }  
+                else{
+                    var respond = caller->respond("success");
+                }
+            }
+
+            sql:Error? err = mysqlClient.close();
+        } else {
+            io:println("MySQL Client initialization for querying data failed!", mysqlClient);
+        }
+
+    }
 }
